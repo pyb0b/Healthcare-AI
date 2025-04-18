@@ -57,7 +57,7 @@ def federated_train(X_test_tensor, y_test_tensor):
         client_weights = []
         for idx, (X, y) in enumerate(client_data):
             local_model = LogisticRegression(input_dim)
-            local_model.load_state_dict(global_model.state_dict())
+            local_model.load_state_dict(decrypt_model_weights(global_model.state_dict()))  ##### decrypt
             optimizer = optim.SGD(local_model.parameters(), lr=0.01)
             criterion = nn.CrossEntropyLoss()
             local_model.train()
@@ -78,7 +78,7 @@ def federated_train(X_test_tensor, y_test_tensor):
         avg_weights = {}
         for key in client_weights[0].keys():
             avg_weights[key] = sum(client[key] for client in client_weights) / len(client_weights)
-        global_model.load_state_dict(decrypt_model_weights(avg_weights))
+        global_model.load_state_dict(avg_weights)
 
         # Save global model after each round
         torch.save(global_model.state_dict(), f"global_model_round_{rnd+1}.pth")
