@@ -73,6 +73,7 @@ def federated_train(X_test_tensor, y_test_tensor):
 
         # Averaging model weights
         avg_weights = {}
+
         for key in client_weights[0].keys():
             avg_weights[key] = sum(client[key] for client in client_weights) / len(client_weights)
         global_model.load_state_dict(avg_weights)
