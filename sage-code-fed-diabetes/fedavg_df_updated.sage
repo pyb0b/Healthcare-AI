@@ -8,7 +8,7 @@ import pandas as pd  ######changed
 import sys
 sys.set_int_max_str_digits(1000000)  # or a higher number if needed
 
-load("enc_utils.sage")
+load("enc_utils_updated.sage")
 
 def sigmoid(z):
     return 1 / (1 + exp(-z))
@@ -33,7 +33,7 @@ def logistic_loss_gradient(X, y, w, b):
 
     w = vector(RR, w)
     b = RR(b)
-        
+
     return grad_w / m, grad_b / m
 
 
@@ -48,9 +48,9 @@ def compute_accuracy(X_test, y_test, w, b):
 
 
 def federated_learning():
-    rounds = 3
+    rounds = 10
     local_epochs = 10
-    sf = 16                 #############ACCURACY REGULATION
+    sf = 10                 #############ACCURACY REGULATION
     lam = 330
     m_prime = nextprime(1000*pow(10,2*sf+1))
     m = pow(m_prime,lam)

@@ -20,7 +20,7 @@ def secret_key_element(m):
     """
     r = randint(1, m)
     while gcd(r, m) != 1:
-        r = randint(1, m)
+        r = randint(-floor(m/2), floor(m/2))
     return r
 
 def secret_key_generation(d, m):
@@ -48,7 +48,7 @@ def inv_secret_key_generation(s, m):
     Returns:
     - A 1 × d Sage matrix of modular inverses
     """
-    return matrix([pow(s[0, i], -1, m) for i in range(s.ncols())])
+    return matrix([centered_mod(pow(s[0, i], -1, m),m) for i in range(s.ncols())])
 
 def scale_round(val, sf):
     """
@@ -90,9 +90,9 @@ def DF_enc(x, m, m_prime, d, secret_key_vector):
     Returns:
     - Encrypted 1 × d Sage matrix
     """
-    x_decomposed = [randint(1, m) for _ in range(d - 1)]
-    x_decomposed.append(int(mod(x - sum(x_decomposed), m_prime)))
-    cipher = [mod(x_decomposed[i] * secret_key_vector[0, i], m) for i in range(d)]
+    x_decomposed = [randint(-floor(m/2), floor(m/2)) for _ in range(d - 1)]
+    x_decomposed.append(int(centered_mod(x - sum(x_decomposed), m_prime)))
+    cipher = [centered_mod(x_decomposed[i] * secret_key_vector[0, i], m) for i in range(d)]
     return matrix(cipher)
 
 def DF_dec(cipher, m_prime, d, secret_key_vector_inv):
@@ -109,7 +109,7 @@ def DF_dec(cipher, m_prime, d, secret_key_vector_inv):
     - Integer plaintext value
     """
     plain_text_intermediate = sum(cipher[0, i] * secret_key_vector_inv[0, i] for i in range(d))
-    return int(mod(plain_text_intermediate, m_prime))
+    return int(centered_mod(int(mod(plain_text_intermediate, m_prime)), m_prime))
 
 def encrypt_value(val, sf, m, m_prime, d, secret_key_vector):
     """
@@ -194,10 +194,10 @@ def generate_public_matrix(secret_key_vector_inv1, secret_key_vector_inv2, m, m_
     A = matrix(M_rows - 1, M_cols)
     for i in range(M_rows - 1):
         for j in range(M_cols):
-            A[i, j] = randint(1, m)
+            A[i, j] = randint(-floor(m/2),floor(m/2))
     t_prime = secret_key_vector_inv2.submatrix(0, 1, 1, M_rows - 1)
-    e_matrix = matrix(1, M_cols, [randint(1, m) for _ in range(M_cols)])
-    b = (-t_prime * A + m_prime * e_matrix + secret_key_vector_inv1) * pow(secret_key_vector_inv2[0, 0], -1, m)
+    e_matrix = matrix(1, M_cols, [randint(-floor(m/2),floor(m/2)) for _ in range(M_cols)])
+    b = (-t_prime * A + m_prime * e_matrix + secret_key_vector_inv1) * centered_mod(int(pow(secret_key_vector_inv2[0, 0], -1, m)), m)
     return b.stack(A)
 
 
@@ -261,5 +261,10 @@ def cipher_multiplication_matrixwise(cipher_matrix1, cipher_matrix2, index):
     padded_rows = [row + [0] * (max_len - len(row)) for row in result_rows]
     return matrix(padded_rows)
 
-
-
+def centered_mod(x, n):
+    #print("x = ", type(x))
+    #print("n = ", type(n))
+    r = int(x) % int(n)
+    if r >= int(n) / 2:
+        r -= int(n)
+    return r
