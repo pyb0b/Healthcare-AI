@@ -50,11 +50,11 @@ def compute_accuracy(X_test, y_test, w, b):
 def client_process(client_id, data_file, send_q, recv_q, s_global_inv):
     if client_id == 0:
         start_time = time.time()
-    sf = 10
-    lam = 330
+    sf = 15
+    lam = 30
     m_prime = nextprime(1000 * pow(10, 2 * sf + 1))
     m = pow(m_prime, lam)
-    d = 30
+    d = 20
     d_ext = d * (d + 1) // 2
     rounds = 10
     local_epochs = 10

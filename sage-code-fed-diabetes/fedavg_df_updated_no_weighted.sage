@@ -2,6 +2,7 @@ from random import randint, random
 from sympy import nextprime
 from sage.all import *
 from sklearn.model_selection import train_test_split
+import time
 
 import pandas as pd  ######changed
 
@@ -48,16 +49,18 @@ def compute_accuracy(X_test, y_test, w, b):
 
 
 def federated_learning():
+    #start_time = time.time()
     rounds = 10
     local_epochs = 10
     sf = 15                 #############ACCURACY REGULATION
     lam = 30
     m_prime = nextprime(1000*pow(10,2*sf+1))
     m = pow(m_prime,lam)
-    d = 20
 
     print("m_bits = ", ceil(log(m,2)))
-    print("m'_bits = ",ceil(log(m_prime,2)))
+    print("m_bits = ",ceil(log(m_prime,2)))
+
+    d = 20
     
     d1 = pd.read_csv("datalocal1.csv") 
     d2 = pd.read_csv("datalocal2.csv")  
@@ -75,8 +78,12 @@ def federated_learning():
     c1 = len(X1)
     c2 = len(X2)
     total = c1+c2
-    c1 = c1/total
-    c2 = c2/total
+    c1 = 1/total
+    c2 = 1/total
+
+    a = 0
+    b = 0
+    c = 0
 
     w_global = vector(RR, [10] * len(X1[0]))   
     b_global = 0.0
@@ -123,13 +130,6 @@ def federated_learning():
             w1 -= 0.1 * grad_w1
             b1 -= 0.1 * grad_b1
         
-        
-        #client 1 encrypts weights and biases using s1 
-        w1_enc_s1 = encrypt_values(w1, sf, m, m_prime, d, s1) # w1 encrypted with s1
-        c1_enc_s1 = encrypt_value(c1, sf, m, m_prime, d, s1)
-        b1_enc_s1 = encrypt_value(b1, sf, m, m_prime, d, s1)
-   
-        
         # Client 2
         w2 = w_global[:] 
         b2 = b_global
@@ -143,16 +143,29 @@ def federated_learning():
         w_avg = w1 * c1 + w2 * c2
         b_avg  = b1 * c1 + b2 * c2
 
-        print('w before encryption:', w_avg)
-        print('b before encryption:', b_avg)
+        #print('w before encryption:', w_avg)
+        #print('b before encryption:', b_avg)
        
-       
+        start_time1 = time.time()
+
         #client 2 encrypts weights and biases using s2 
         w2_enc_s2 = encrypt_values(w2, sf, m, m_prime, d, s2) 
         c2_enc_s2 = encrypt_value(c2, sf, m, m_prime, d, s2)
         b2_enc_s2 = encrypt_value(b2, sf, m, m_prime, d, s2)
-         
+
+        end_time1 = time.time()
         
+        print(f"Execution time enc: {end_time1 - start_time1:.4f} seconds")
+
+        delta = end_time1 - start_time1
+        a = a + delta
+
+        #client 1 encrypts weights and biases using s1 
+        w1_enc_s1 = encrypt_values(w1, sf, m, m_prime, d, s1) # w1 encrypted with s1
+        c1_enc_s1 = encrypt_value(c1, sf, m, m_prime, d, s1)
+        b1_enc_s1 = encrypt_value(b1, sf, m, m_prime, d, s1)
+         
+        start_time2 = time.time()
         #server side. Server has M1_ext_s, M1_s_s1, M2_ext_s, M2_s_s2 sent by clients
         
         c1_enc_s1_dup = duplicate_cipher_row(c1_enc_s1, d)
@@ -184,32 +197,62 @@ def federated_learning():
         #switch from s to s2
         w_agg_s2 = (M2_s_s2 * w_agg_s.transpose()).transpose()
         b_agg_s2 = (M2_s_s2 * b_agg_s.transpose()).transpose()
+
+        end_time2 = time.time()
         
+        print(f"Execution time server: {end_time2 - start_time2:.4f} seconds")
         
+        delta2 = end_time2 - start_time2
+        b = b + delta2
+        
+        start_time3 = time.time()
         #decrypt with s1       
         w_dec_s1 = decrypt_values(w_agg_s1, 2*sf, m_prime, d, s1_inv) 
         b_dec_s1 = decrypt_value(b_agg_s1, 2*sf, m_prime, d, s1_inv)
+
+        end_time3 = time.time()
+        
+        print(f"Execution time decrypt: {end_time3 - start_time3:.4f} seconds")
+        
+        delta3 = end_time3 - start_time3
+        c = c + delta3
         
         #decrypt with s2
         w_dec_s2 = decrypt_values(w_agg_s2, 2*sf, m_prime, d, s2_inv) 
         b_dec_s2 = decrypt_value(b_agg_s2, 2*sf, m_prime, d, s2_inv)
+
+        #end_time1 = time.time()
+        #print(f"Execution time enc DF_KS: {end_time1 - start_time1:.4f} seconds")
         
         
         
-        print("Decrypted weights Client1:", w_dec_s1)
-        print("Decrypted bias Client1:", b_dec_s1)
+        #print("Decrypted weights Client1:", w_dec_s1)
+        #print("Decrypted bias Client1:", b_dec_s1)
         
-        print("Decrypted weights Client2:", w_dec_s2)
-        print("Decrypted bias Client2:", b_dec_s2)
+        #print("Decrypted weights Client2:", w_dec_s2)
+        #print("Decrypted bias Client2:", b_dec_s2)
         
-        w_dec = w_dec_s1
-        b_dec = b_dec_s1
+        w_dec = [i/total for i in w_dec_s1]
+        b_dec = b_dec_s1/total
+
+        
         
         w_global = vector(RR, w_dec)
         b_global = b_dec
 
-        
+    a = a/10
+    b = b/10
+    c = c/10
+    print("avg enc = ", a)
+    print("avg server =", b)
+    print("avg decrypt =", c)
     acc = compute_accuracy(X_test, y_test, w_global, b_global)
     print("\nTest Accuracy:", round(acc * 100, 2), "%")
+
+    print("w = ", w_global)
+    print("b = ", b_global)
+
+    #end_time = time.time()
+    #print(f"Execution time seq: {end_time - start_time:.4f} seconds")
 
 federated_learning()

@@ -54,11 +54,11 @@ def federated_learning():
     start_time = time.time()
     rounds = 10
     local_epochs = 10
-    sf = 10                 #############ACCURACY REGULATION
-    lam = 330
+    sf = 15                 #############ACCURACY REGULATION
+    lam = 30
     m_prime = nextprime(1000*pow(10,2*sf+1))
     m = pow(m_prime,lam)
-    d = 30
+    d = 20
     
     d1 = pd.read_csv("datalocal1.csv") 
     d2 = pd.read_csv("datalocal2.csv")  
